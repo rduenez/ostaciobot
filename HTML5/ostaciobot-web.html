@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>OstacioWeb</title>
+	<script type="text/javascript">
+var WIDTH = 700;
+var HEIGHT = 700;
+
+var TARGET = -Number.MAX_VALUE;
+
+var	NOT_INIT 	= -1;				//Valor de control
+var	MOVES		= 4;				//num de movimientos
+var CLEAR		= 0;
+var WALL		= Number.MAX_VALUE;	//pared
+
+var	UP 			= 0;			//movimientos
+var	LEFT 		= 1;
+var DOWN		= 2;
+var RIGHT		= 3;
+
+var TRACENUM	= 6;
+		
+var	COLS 		= 20;		//columnas
+var	ROWS 		= 20;		//renglones
+var WALLS		= 100;		//paredes
+var MAXSTEPS	= 1000;	//carga de bateria
+var	SEARCHSPEED	= 100;		//velocidad de busqueda
+var	SHPATHSPEED	= 200;		//velocidad de marca de camino corto
+
+var SHORTPATH	= (COLS*COLS*ROWS*ROWS);	//Marca de camino corto
+				
+//		public Random r;						//generado de aleatorios
+
+var ini_i			= 0; 		//valor inicial del robot en i
+var ini_j			= 0;		//valor inicial del robot en i
+var bateria			= 15 ; //bateria
+var posi;						//posicion actual del robot en i
+var posj;						//posicion actual del robot en j
+		
+var mapa;					//mapa interno
+var mat_ady;				//matriz de caminos
+var distancia;				//distancias
+var anterior;					//registro donde queda orden de los nodos
+
+
+var List;					//lista para ver movimientos disponibles
+		
+var encontrado		= false;	//flag de busqueda
+var terminado		= false;	//flag de terminacion
+var visitado;				//arreglo para no repetir en camino corto
+
+var myTimer;
+		
+//obtener numero lineal del nodo en su pos en el mapa
+function GetLnPos(r, c){return Math.floor(COLS*r+c);}  
+		
+//obtener el renglon o columna en el mapa de un nodo
+function GetRow(lp){return Math.floor(lp / COLS);}
+function GetCol(lp){return Math.floor(lp % COLS);}
+
+function DrawString(context, value, font, color, x, y)
+{
+	context.fillStyle = color;
+	context.font = font;
+	context.fillText(value,x,y);
+}
+
+function DrawRectangle(context, color, x, y, w, h)
+{
+	context.beginPath();
+	context.lineWidth="1px";
+	context.strokeStyle="color";
+	context.rect(x,y,w,h); 
+	context.stroke();
+}
+
+function FillRectangle(context, color, x, y, w, h)
+{
+	context.fillStyle=color;
+	context.fillRect(x,y,w,h);
+}
+
+//inicializacion de los valores
+function InitializeValues()
+{
+	terminado=false;
+	encontrado=false;
+	bateria=MAXSTEPS;
+			
+	for (i=0;i<ROWS;i++)
+	{
+		for (j=0;j<COLS;j++)
+		{
+			mapa[i][j]= 0;
+		}
+	}
+
+	for (i=0;i<ROWS*COLS;i++)
+	{
+		distancia[i]=Number.MAX_VALUE;
+		anterior[i]=NOT_INIT;
+		visitado[i]=false;
+	}
+			
+	for (i=0;i<ROWS*COLS;i++)
+	{
+		for (j=0;j<MOVES;j++)
+		{
+			mat_ady[i][j]=Number.MAX_VALUE;
+		}
+	}					
+	
+	ini_i = Math.floor(Math.random()*ROWS);
+	ini_j = Math.floor(Math.random()*COLS);
+			
+	posi=ini_i;
+	posj=ini_j;
+			
+	for (i=0;i<WALLS;i++)
+	{
+		var barri = Math.floor(Math.random()*ROWS);
+		var barrj = Math.floor(Math.random()*COLS);
+				
+		if(barri!=posi && barrj!=posj)
+		{
+			mapa[barri][barrj]=WALL;
+		}
+	}
+						
+	var di=0,dj=0;
+	di = Math.floor(Math.random()*ROWS);
+	dj = Math.floor(Math.random()*COLS);
+			
+	mapa[di][dj]=TARGET;
+//	myTimer.Interval=SEARCHSPEED;
+//	myTimer.Enabled=true;
+}
+
+function OnPaint(context)
+{
+	var sw = Math.floor(WIDTH/COLS); //largo de casilla
+	var sh = Math.floor(HEIGHT/ROWS); //alto de casilla
+	var sb = (HEIGHT-50) / MAXSTEPS;	//alto de bateria
+		
+	for (i=0;i<ROWS;i++) //consulta de cada casilla
+	{
+		for (j=0;j<COLS;j++)
+		{
+			if (mapa[i][j]==CLEAR)
+				FillRectangle(context,"white",j*sw,i*sh,sw,sh);
+			else if(mapa[i][j]==WALL)
+				FillRectangle(context,"black",j*sw,i*sh,sw,sh);
+			else if (mapa[i][j]==SHORTPATH)
+				FillRectangle(context,"firebrick",j*sw,i*sh,sw,sh);
+			else if (mapa[i][j]==TARGET)
+				FillRectangle(context,"steelBlue",j*sw,i*sh,sw,sh);
+			else
+			{
+				var val;
+				if (mapa[i][j]>=TRACENUM)
+					val =TRACENUM-1;
+				else
+					val=mapa[i][j];
+				var c= 255 - (val*Math.floor(256/TRACENUM));
+				//console.log(c);
+				var color = "rgb("+c+","+c+","+c+")";
+				//console.log(color);
+				
+
+				FillRectangle(context,color,j*sw,i*sh,sw,sh);
+			}
+					
+			if(i==ini_i && j ==ini_j)
+				FillRectangle(context,"forestgreen",j*sw,i*sh,sw,sh);
+					
+			if(i==posi && j ==posj)
+				FillRectangle(context,"gold",j*sw,i*sh,sw,sh);
+				
+			DrawRectangle(context,"black",j*sw,i*sh,sw,sh);
+		}
+	}
+			
+	//dibujo de bateria
+	FillRectangle(context,"blue",WIDTH+50,10,10,20);
+	FillRectangle(context,"lightGray",WIDTH+52,7,6,3);
+
+	DrawString(context,"+","10px Courier","yellow",WIDTH+52,18);
+	DrawString(context,"-","10px Courier","yellow",WIDTH+52,28);
+			
+	FillRectangle(context,"red", WIDTH+50 , 35 , 10 , MAXSTEPS*sb);
+	FillRectangle(context,"green",WIDTH+50, 35 + ((MAXSTEPS-bateria)*sb),10,bateria*sb);
+}
+
+
+//funcion que permite que el robot pueda conectar nodos aun cuando no los visita
+//de menera adyacente, si el robot visita 4 nodos juntos permite conectarlos		
+//   sin funcion               con funcion
+		
+//   [  v  ][  <  ]         	[  v> ][ v<  ]
+//   [  >  ][  ^  ] 			[  ^> ][ ^<  ]
+function sinOrden()
+{
+	for ( i=0;i<ROWS;i++)
+	{
+		for ( j=0;j<COLS;j++)
+		{
+			for( movs=0;movs<MOVES;movs++)
+			{
+				//busca que haya visita y no sea pared
+				if (movs==UP) if(i > 0) 
+					if(mapa[i-1][j]>0 && mapa[i-1][j] != WALL) mat_ady[GetLnPos(i,j)][UP]=1;
+				if (movs==LEFT) if(j > 0) 
+					if(mapa[i][j-1]>0 && mapa[i][j-1] != WALL) mat_ady[GetLnPos(i,j)][LEFT]=1;
+				if (movs==DOWN) if(i < ROWS - 1) 
+					if(mapa[i+1][j]>0 && mapa[i+1][j] != WALL) mat_ady[GetLnPos(i,j)][DOWN]=1;
+				if (movs==RIGHT) if(j < COLS - 1) 
+					if(mapa[i][j+1]>0 && mapa[i][j+1] != WALL) mat_ady[GetLnPos(i,j)][RIGHT]=1;
+			}					
+		}
+	}
+}
+
+//algoritmo de dijsktra para resolucion de camino mas corto
+function camino( or, des)
+{
+	var actual		=	or;
+	var menor		=	Number.MAX_VALUE;
+	var dc 			= 	distancia[actual];
+	var k			=	NOT_INIT;
+	var nuevadist	=	Number.MAX_VALUE;
+	var	ai;
+	var aj;
+			
+	distancia[or]=0;
+	anterior[or]=or;
+	visitado[or]=true;
+			
+	while(actual!=des)
+	{
+		menor		= Number.MAX_VALUE;
+		dc			= distancia[actual];
+		nuevadist	= Number.MAX_VALUE;
+		ai			= GetRow(actual);
+		aj			= GetCol(actual);
+				
+		for( i=0;i<COLS*ROWS;i++)
+		{	
+			if(visitado[i]==false)
+			{
+													
+				if(i==actual-COLS)
+				{
+					if(mat_ady[actual][UP]==Number.MAX_VALUE)
+						nuevadist = Number.MAX_VALUE;
+					else
+						nuevadist = dc+mat_ady[actual][UP];
+				}
+				else if(i==actual-1)
+				{
+					if(mat_ady[actual][LEFT]==Number.MAX_VALUE)
+						nuevadist = Number.MAX_VALUE;
+					else
+						nuevadist = dc+mat_ady[actual][LEFT];
+				}
+				else if(i==actual+COLS)
+				{
+					if(mat_ady[actual][DOWN]==Number.MAX_VALUE)
+						nuevadist = Number.MAX_VALUE;
+					else
+						nuevadist = dc+mat_ady[actual][DOWN];
+				}
+				else if (i==actual+1)
+				{								
+					if(mat_ady[actual][RIGHT]==Number.MAX_VALUE)
+						nuevadist = Number.MAX_VALUE;
+					else
+						nuevadist = dc+mat_ady[actual][RIGHT];
+				}
+				else nuevadist=Number.MAX_VALUE;
+				
+				if(nuevadist<distancia[i])
+				{							
+					distancia[i]=nuevadist;
+					anterior[i]=actual;
+				}
+				
+				if(distancia[i]<menor)
+				{
+					menor=distancia[i];
+					k=i;
+				}
+				
+			}
+		}
+		actual=k;
+		visitado[actual]=true;
+	}
+
+	alert("Camino mas corto encontrado en "+distancia[des]+" pasos");
+}
+
+function tick()
+{
+	var c = document.getElementById("myCanvas");
+	var context = c.getContext("2d");
+
+	//fin de simulacion
+	if (terminado)
+	{
+		clearInterval(myTimer);
+		alert("Fin de la Simulacion");
+
+		if(confirm("Desea iniciar una nueva simulacion?"))
+		{
+			InitializeValues();
+			myTimer = setInterval(tick,SEARCHSPEED);
+		}
+				
+		return;
+	}
+			
+	//checar bateria			
+	if(bateria<=-0)
+	{
+		clearInterval(myTimer);
+					
+		if(confirm("La bateria se ha agotado, desea cambiar bateria?"))
+			bateria = MAXSTEPS;
+		else
+			terminado=true;
+
+		myTimer = setInterval(tick, SEARCHSPEED);
+				
+		return;
+	}
+			
+	//cuando encuentra el objetivo empieza a marcar el camino mas corto
+	if (encontrado)
+	{
+		//termina de marca el camino
+		if(posi == ini_i && posj == ini_j)
+		{
+			clearInterval(myTimer);
+			alert("Seguimiento de camino mas corto terminado");
+			terminado=true;
+			myTimer = setInterval(tick, SHPATHSPEED);
+			return;
+		}	
+				
+		//marca en el mapa la ruta
+		if (mapa[posi][posj]!=TARGET)
+			mapa[posi][posj]=SHORTPATH;
+				
+		console.log(mapa[posi][posj]);
+
+		//obtiene el siguiente (anterior) nodo a marca
+		var val=GetLnPos(posi,posj);
+		var prev=anterior[val];
+				
+		//obtiene la columna y renglon del nodo
+		posi=GetRow(prev);
+		posj=GetCol(prev);
+				
+		bateria--;
+	}
+	else
+	{
+			
+		//busca el objetivo o aumenta numero de visitas
+		if(mapa[posi][posj]!=TARGET)
+		{
+			mapa[posi][posj]++;
+		}
+		else
+		{
+			//encuentr el objetivo
+			clearInterval(myTimer);
+			alert("Objetivo localizado");
+			encontrado=true;
+			sinOrden();
+			camino(GetLnPos(ini_i,ini_j),GetLnPos(posi,posj));
+			myTimer = setInterval(tick, SHPATHSPEED)
+			return;			
+		}
+				
+		//indicador para mover a las casillas con menos visitas
+		var menor = Number.MAX_VALUE;
+			
+		//encuentra las casillas con menor visita
+		for(movs=0;movs<MOVES;movs++)
+		{
+			if (movs==UP) if(posi > 0) if(mapa[posi-1][posj]<menor) menor=mapa[posi-1][posj];
+			if (movs==LEFT) if(posj > 0) if(mapa[posi][posj-1]<menor) menor=mapa[posi][posj-1];
+			if (movs==DOWN) if(posi < ROWS - 1) if(mapa[posi+1][posj]<menor)menor=mapa[posi+1][posj];
+			if (movs==RIGHT) if(posj < COLS - 1) if(mapa[posi][posj+1]<menor)menor=mapa[posi][posj+1];
+		}
+		
+		//limpia y genera una lista con las casillas menos visitadas
+		while(direc.length > 0)
+    		direc.pop();
+
+		for(movs=0;movs<MOVES;movs++)
+		{
+			if (movs==UP) if(posi > 0) if(mapa[posi-1][posj]==menor) direc.push(movs);
+			if (movs==LEFT) if(posj > 0) if(mapa[posi][posj-1]==menor) direc.push(movs);
+			if (movs==DOWN) if(posi < ROWS - 1) if(mapa[posi+1][posj]==menor)direc.push(movs);
+			if (movs==RIGHT) if(posj < COLS - 1) if(mapa[posi][posj+1]==menor)direc.push(movs);
+		}
+
+		//se genera aleatoriamente un movimiento a la lista de casillas poco visitadas
+		var mov = direc[Math.floor(Math.random()*direc.length)]
+			
+		//se marca en la matriz de nodos la visita y se mueve el robot
+		if (mov==UP) if(posi > 0)
+		{
+			mat_ady[GetLnPos(posi,posj)][UP]=1;
+			mat_ady[GetLnPos(posi-1,posj)][DOWN]=1;
+			posi--;
+		}
+		if (mov==LEFT) if(posj > 0)
+		{
+			mat_ady[GetLnPos(posi,posj)][LEFT]=1;
+			mat_ady[GetLnPos(posi,posj-1)][RIGHT]=1;
+			posj--;
+		}
+		if (mov==DOWN) if(posi < ROWS - 1)
+		{
+			mat_ady[GetLnPos(posi,posj)][DOWN]=1;
+			mat_ady[GetLnPos(posi+1,posj)][UP]=1;
+			posi++;
+		}
+		if (mov==RIGHT) if(posj < COLS - 1)
+		{
+			mat_ady[GetLnPos(posi,posj)][RIGHT]=1;
+			mat_ady[GetLnPos(posi,posj+1)][LEFT]=1;
+			posj++;
+		}
+				
+		bateria--;
+	}
+			
+	OnPaint(context);
+}
+
+
+function inicio()
+{
+	document.getElementById("main").innerHTML = "OSTACIOWEB";
+
+
+	//instancia de los objetos
+	mapa = new Array(ROWS);
+	direc = new Array();
+			
+	for ( i = 0 ; i < ROWS ; i++ )
+	{
+		mapa[i]=new Array(COLS);
+	}
+
+	mat_ady = new Array(ROWS*COLS);
+	
+	distancia =new Array(ROWS*COLS);
+	visitado = new Array(ROWS*COLS);
+	anterior = new Array(ROWS*COLS);
+			
+	for ( i = 0 ; i < ROWS * COLS ; i++ )
+	{
+		mat_ady[i] = new Array(MOVES);
+	}
+
+	InitializeValues();
+
+	myTimer = setInterval(tick, SEARCHSPEED);
+}
+
+	</script>
+</head>
+<body>
+
+	<p id="main"></p>
+
+	<canvas id="myCanvas" width="800" height="700" style="border:1px solid #000000;">
+	</canvas>
+
+	<script type="text/javascript">
+		inicio();
+		console.log();
+	</script>
+</body>
+</html>
