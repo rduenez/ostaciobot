@@ -19,7 +19,7 @@ class Game(object):
 
     #Window Properties
     RESOLUTION = WIDTH + 100,HEIGHT
-    WINDOWS_TITLE = 'Ostaciobot v0.6'
+    WINDOWS_TITLE = 'Ostaciobot v0.7'
 
     #Colors
     WHITE = (255, 255, 255)
@@ -61,6 +61,9 @@ class Game(object):
     DOWN = 2;
     RIGHT = 3;
 
+    #Path in graph values
+    NOT_INIT 	= -1
+
     def __init__(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         pygame.display.set_caption(self.WINDOWS_TITLE)
@@ -72,7 +75,11 @@ class Game(object):
         self.screen = pygame.display.set_mode(self.RESOLUTION)
         self.clock = pygame.time.Clock()
         self.map = [[0 for x in range(self.COLS)] for y in range(self.ROWS)]
+        #Dijkstra lists
         self.adjacency_matrix = [[0 for x in range(self.MOVES)] for y in range(self.ROWS*self.COLS)]
+        self.distance = [None]*(self.ROWS*self.COLS)
+        self.visited = [None]*(self.ROWS*self.COLS)
+        self.node_sequence = [None]*(self.ROWS*self.COLS);
         self.init()
 
     def init(self):
@@ -80,9 +87,15 @@ class Game(object):
         self.found = False
         self.win = False
 
+        #Dijkstra lists
+        for i in range (0,(self.ROWS*self.COLS)):
+            self.distance[i]=sys.maxsize;
+            self.node_sequence[i]=self.NOT_INIT;
+            self.visited[i]=False;
+
         for i in range (0,(self.ROWS*self.COLS)):
             for j in range (0,self.MOVES):
-                self.adjacency_matrix[i][j]=0
+                self.adjacency_matrix[i][j]=sys.maxsize;
 
         for i in range(0,self.ROWS):
             for j in range(0,self.COLS):
@@ -136,7 +149,8 @@ class Game(object):
                 self.map[self.current_i][self.current_j]+=1;
             else:
                 self.found=True
-                print (self.adjacency_matrix)
+                #calculate shortest route from current to landing spot
+                self.dijkstra(get_line_position(self.initial_i,self.initial_j),get_line_position(self.current_i,self.current_j))
                 return
 
             #locate slot with the lower visit count
@@ -245,7 +259,7 @@ class Game(object):
                 if (i==self.current_i and j==self.current_j):
                     pygame.draw.rect(self.screen, self.GOLD, rect)
 
-                #pygame.draw.rect(self.screen, self.BLACK, rect, 1)
+                pygame.draw.rect(self.screen, self.BLACK, rect, 1)
 
         #Draw displays
         display_found = pygame.Rect((self.WIDTH+5,self.HEIGHT-40), (90,35))
@@ -308,6 +322,68 @@ class Game(object):
 
     def wait(self):
         self.clock.tick(self.FRAMES_PER_SECOND)
+
+    def dijkstra(self,origin,destination):
+        current = origin
+        shortest = sys.maxsize
+        current_distance = self.distance[current]
+        k = self.NOT_INIT
+        new_distance = sys.maxsize
+
+        self.distance[origin]=0
+        self.node_sequence[origin]=origin
+        self.visited[origin]=True
+
+        while(current!=destination):
+            shortest = sys.maxsize
+            current_distance = self.distance[current]
+            new_distance = sys.maxsize
+
+            for i in range (0,(self.COLS*self.ROWS)):
+                if(self.visited[i]==False):
+                    if(i==current-self.COLS):
+                        if(self.adjacency_matrix[current][self.UP]==sys.maxsize):
+                            new_distance = sys.maxsize
+                        else:
+                            new_distance = current_distance+self.adjacency_matrix[current][self.UP]
+                    elif(i==current-1):
+                        if(self.adjacency_matrix[current][self.LEFT]==sys.maxsize):
+                            new_distance = sys.maxsize
+                        else:
+                            new_distance = current_distance+self.adjacency_matrix[current][self.LEFT]
+                    elif(i==current+self.COLS):
+                        if(self.adjacency_matrix[current][self.DOWN]==sys.maxsize):
+                            new_distance = sys.maxsize
+                        else:
+                            new_distance = current_distance+self.adjacency_matrix[current][self.DOWN]
+                    elif (i==current+1):
+                        if(self.adjacency_matrix[current][self.RIGHT]==sys.maxsize):
+                            new_distance = sys.maxsize
+                        else:
+                            new_distance = current_distance+self.adjacency_matrix[current][self.RIGHT]
+                    else:
+                        new_distance=sys.maxsize
+
+                    if(new_distance<self.distance[i]):
+                        self.distance[i]=new_distance
+                        self.node_sequence[i]=current
+
+                    if(self.distance[i]<shortest):
+                        shortest=self.distance[i]
+                        k=i
+
+            current=k;
+            self.visited[current]=True;
+
+        print("Distance:")
+        print(self.distance[destination]);
+
+        print("Route:")
+        var = destination
+        while (var != origin):
+            print (var)
+            var = self.node_sequence[var]
+        print (origin)
 
 def main():
     game = Game()
