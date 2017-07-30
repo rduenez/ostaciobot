@@ -8,6 +8,13 @@ import sys
 def get_line_position(r, c):
     return (Game.COLS*r)+c
 
+#get row and column from a linear node
+def get_row(lp):
+    return lp // Game.COLS
+
+def get_column(lp):
+    return lp % Game.COLS
+
 class Game(object):
 
     #Animation properties
@@ -19,7 +26,7 @@ class Game(object):
 
     #Window Properties
     RESOLUTION = WIDTH + 100,HEIGHT
-    WINDOWS_TITLE = 'Ostaciobot v0.7'
+    WINDOWS_TITLE = 'Ostaciobot v1.0'
 
     #Colors
     WHITE = (255, 255, 255)
@@ -41,9 +48,9 @@ class Game(object):
     TRACE_MARK	= 6;
 
     #Map dimentions and values
-    COLS = 5;
-    ROWS = 5;
-    WALLS = 2;
+    COLS = 20;
+    ROWS = 20;
+    WALLS = 100;
 
     #Slot values
     CLEAR = 0;
@@ -62,7 +69,8 @@ class Game(object):
     RIGHT = 3;
 
     #Path in graph values
-    NOT_INIT 	= -1
+    NOT_INIT = -1
+    SHORTPATH = sys.maxsize-1
 
     def __init__(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
@@ -150,6 +158,7 @@ class Game(object):
             else:
                 self.found=True
                 #calculate shortest route from current to landing spot
+                self.clear_adjacency()
                 self.dijkstra(get_line_position(self.initial_i,self.initial_j),get_line_position(self.current_i,self.current_j))
                 return
 
@@ -222,6 +231,25 @@ class Game(object):
 
             self.battery -= 1;
 
+        else:
+            if(self.current_i == self.initial_i and self.current_j == self.initial_j):
+                self.win=True;
+                return;
+            else:
+                #Mark as visited while moving back
+                if (self.map[self.current_i][self.current_j]!=self.TARGET):
+                    self.map[self.current_i][self.current_j]=self.SHORTPATH;
+
+                #get the next node to be marked
+                val=get_line_position(self.current_i,self.current_j);
+                prev=self.node_sequence[val];
+
+                #get column and row
+                self.current_i=get_row(prev);
+                self.current_j=get_column(prev);
+
+                self.battery -= 1;
+
     def draw(self):
         self.screen.fill(self.BACKGROUND)
         slot_width = ((self.WIDTH-self.MAP_BORDER)//self.COLS)
@@ -241,6 +269,9 @@ class Game(object):
                 if (self.map[i][j]==self.WALL):
                     pygame.draw.rect(self.screen, self.BLACK, rect)
 
+                if(self.map[i][j]==self.SHORTPATH):
+                    pygame.draw.rect(self.screen, self.FIREBRICK, rect)
+
                 if (self.map[i][j]<(self.WALL-1) and self.map[i][j]>self.TARGET):
                     if (self.map[i][j]>=self.TRACE_MARK):
                         val = self.TRACE_MARK-1;
@@ -259,7 +290,7 @@ class Game(object):
                 if (i==self.current_i and j==self.current_j):
                     pygame.draw.rect(self.screen, self.GOLD, rect)
 
-                pygame.draw.rect(self.screen, self.BLACK, rect, 1)
+                #pygame.draw.rect(self.screen, self.BLACK, rect, 1)
 
         #Draw displays
         display_found = pygame.Rect((self.WIDTH+5,self.HEIGHT-40), (90,35))
@@ -323,6 +354,27 @@ class Game(object):
     def wait(self):
         self.clock.tick(self.FRAMES_PER_SECOND)
 
+    def clear_adjacency(self):
+        for i in range(0,self.ROWS):
+            for j in range (0,self.COLS):
+                for movs in range (0,self.MOVES):
+                    if (movs==self.UP):
+                        if(i > 0):
+                            if(self.map[i-1][j]>0 and self.map[i-1][j] != self.WALL):
+                                self.adjacency_matrix[get_line_position(i,j)][self.UP]=1;
+                    if (movs==self.LEFT):
+                        if(j > 0):
+                            if(self.map[i][j-1]>0 and self.map[i][j-1] != self.WALL):
+                                self.adjacency_matrix[get_line_position(i,j)][self.LEFT]=1;
+                    if (movs==self.DOWN):
+                        if(i < self.ROWS - 1):
+                            if(self.map[i+1][j]>0 and self.map[i+1][j] != self.WALL):
+                                self.adjacency_matrix[get_line_position(i,j)][self.DOWN]=1;
+                    if (movs==self.RIGHT):
+                        if(j < self.COLS - 1):
+                            if(self.map[i][j+1]>0 and self.map[i][j+1] != self.WALL):
+                                self.adjacency_matrix[get_line_position(i,j)][self.RIGHT]=1;
+
     def dijkstra(self,origin,destination):
         current = origin
         shortest = sys.maxsize
@@ -374,16 +426,6 @@ class Game(object):
 
             current=k;
             self.visited[current]=True;
-
-        print("Distance:")
-        print(self.distance[destination]);
-
-        print("Route:")
-        var = destination
-        while (var != origin):
-            print (var)
-            var = self.node_sequence[var]
-        print (origin)
 
 def main():
     game = Game()
