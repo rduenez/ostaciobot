@@ -25,7 +25,10 @@ class Game(object):
     STEELBLUE = (70,130,180)
     FORESTGREEN = (34, 139, 34)
     GOLD = (255, 215, 0)
+    DARKSLATEBLUE = (72, 61, 139)
+    PALEGOLDENROAD = (238, 232, 170)
     BACKGROUND = WHITE
+    TRACE_MARK	= 6;
 
     #Map dimentions and values
     COLS = 20;
@@ -40,6 +43,7 @@ class Game(object):
     #Bot internal values
     initial_i = 0;
     initial_j = 0;
+    BATTERY_STEPS = 100;
     #movements
     MOVES = 4;
     UP = 0;
@@ -52,6 +56,10 @@ class Game(object):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         pygame.display.set_caption(self.WINDOWS_TITLE)
         pygame.init()
+        script_path = os.path.dirname(os.path.realpath(__file__))
+        font_path = os.path.join(script_path, "digital-7.ttf")
+        font_size = 36
+        self.font = pygame.font.Font(font_path, font_size)
         self.screen = pygame.display.set_mode(self.RESOLUTION)
         self.clock = pygame.time.Clock()
         self.map = [[0 for x in range(self.COLS)] for y in range(self.ROWS)]
@@ -60,12 +68,17 @@ class Game(object):
 
     def init(self):
         self.done = False
+        self.found = False
+        self.win = False
+
         for i in range(0,self.ROWS):
             for j in range(0,self.COLS):
                 self.map[i][j] = self.CLEAR
 
         self.initial_i = randint(0,self.ROWS-1);
         self.initial_j = randint(0,self.COLS-1);
+
+        self.battery = self.BATTERY_STEPS;
 
         self.current_i = self.initial_i;
         self.current_j = self.initial_j;
@@ -88,11 +101,20 @@ class Game(object):
         if keys[K_ESCAPE] or keys[K_q]:
             self.done = True
             return
+
+        if keys[K_SPACE] or keys[K_b]:
+             self.battery = self.BATTERY_STEPS
+        if keys[K_BACKSPACE] or keys[K_r]:
+            self.init()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.done = True
                 return
         # TODO: Handle players events here
+
+        if (self.battery <= 0):
+            return
 
         #check if target was found
         if(not self.found):
@@ -162,6 +184,8 @@ class Game(object):
                 if(self.current_j < self.COLS - 1):
                     self.current_j+=1;
 
+            self.battery -= 1;
+
     def draw(self):
         self.screen.fill(self.BACKGROUND)
         slot_width = ((self.WIDTH-self.MAP_BORDER)//self.COLS)
@@ -181,6 +205,15 @@ class Game(object):
                 if (self.map[i][j]==self.WALL):
                     pygame.draw.rect(self.screen, self.BLACK, rect)
 
+                if (self.map[i][j]<(self.WALL-1) and self.map[i][j]>self.TARGET):
+                    if (self.map[i][j]>=self.TRACE_MARK):
+                        val = self.TRACE_MARK-1;
+                    else:
+                        val = self.map[i][j];
+                    c = 255 - (val * 256//self.TRACE_MARK);
+                    color = (c,c,c)
+                    pygame.draw.rect(self.screen, color, rect)
+
                 if (self.map[i][j]==self.TARGET):
                     pygame.draw.rect(self.screen, self.STEELBLUE, rect)
 
@@ -190,7 +223,40 @@ class Game(object):
                 if (i==self.current_i and j==self.current_j):
                     pygame.draw.rect(self.screen, self.GOLD, rect)
 
-                pygame.draw.rect(self.screen, self.BLACK, rect, 1)
+                #pygame.draw.rect(self.screen, self.BLACK, rect, 1)
+
+        #Draw displays
+        display_found = pygame.Rect((self.WIDTH+5,self.HEIGHT-40), (90,35))
+        pygame.draw.rect(self.screen, self.PALEGOLDENROAD, display_found)
+        pygame.draw.rect(self.screen, self.BLACK, display_found, 1)
+
+        display_battery = pygame.Rect((self.WIDTH+5,self.HEIGHT-80), (90,35))
+        pygame.draw.rect(self.screen, self.PALEGOLDENROAD, display_battery)
+        pygame.draw.rect(self.screen, self.BLACK, display_battery, 1)
+
+        display_done = pygame.Rect((self.WIDTH+5,self.HEIGHT-120), (90,35))
+        pygame.draw.rect(self.screen, self.PALEGOLDENROAD, display_done)
+        pygame.draw.rect(self.screen, self.BLACK, display_done, 1)
+
+
+        if(self.found):
+            surface_found = self.font.render('FOUND', False, self.DARKSLATEBLUE)
+            rect = surface_found.get_rect( center = (self.WIDTH+50 , self.HEIGHT-25 ))
+            self.screen.blit(surface_found, rect)
+
+        if(self.battery <= 0):
+            surface_battery = self.font.render('P OFF', False, self.DARKSLATEBLUE)
+        elif (self.battery <= self.BATTERY_STEPS//5):
+            surface_battery = self.font.render('P LOW', False, self.DARKSLATEBLUE)
+        else:
+            surface_battery = self.font.render('PW ON', False, self.DARKSLATEBLUE)
+        rect = surface_battery.get_rect( center = (self.WIDTH+50 , self.HEIGHT-65 ))
+        self.screen.blit(surface_battery, rect)
+
+        if(self.win):
+            surface_done = self.font.render('WIN', False, self.DARKSLATEBLUE)
+            rect = surface_done.get_rect( center = (self.WIDTH+50 , self.HEIGHT-105 ))
+            self.screen.blit(surface_done, rect)
 
         pygame.display.flip()
 
