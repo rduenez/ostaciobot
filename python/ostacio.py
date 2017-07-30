@@ -40,6 +40,13 @@ class Game(object):
     #Bot internal values
     initial_i = 0;
     initial_j = 0;
+    #movements
+    MOVES = 4;
+    UP = 0;
+    LEFT = 1;
+    DOWN = 2;
+    RIGHT = 3;
+
 
     def __init__(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
@@ -48,6 +55,7 @@ class Game(object):
         self.screen = pygame.display.set_mode(self.RESOLUTION)
         self.clock = pygame.time.Clock()
         self.map = [[0 for x in range(self.COLS)] for y in range(self.ROWS)]
+        self.found = False
         self.init()
 
     def init(self):
@@ -58,6 +66,9 @@ class Game(object):
 
         self.initial_i = randint(0,self.ROWS-1);
         self.initial_j = randint(0,self.COLS-1);
+
+        self.current_i = self.initial_i;
+        self.current_j = self.initial_j;
 
         for i in range (0,self.WALLS):
             barrier_i = randint(0,self.ROWS-1)
@@ -83,6 +94,74 @@ class Game(object):
                 return
         # TODO: Handle players events here
 
+        #check if target was found
+        if(not self.found):
+            #search for the target or increase visit count
+            if(self.map[self.current_i][self.current_j]!=self.TARGET):
+                self.map[self.current_i][self.current_j]+=1;
+            else:
+                self.found=True
+                return
+
+            #locate slot with the lower visit count
+            lower_visited = sys.maxsize
+
+            for movs in range (0,self.MOVES):
+                if (movs==self.UP):
+                    if(self.current_i > 0):
+                        if(self.map[self.current_i-1][self.current_j]<lower_visited):
+                            lower_visited=self.map[self.current_i-1][self.current_j];
+                if (movs==self.LEFT):
+                    if(self.current_j > 0):
+                        if(self.map[self.current_i][self.current_j-1]<lower_visited):
+                            lower_visited=self.map[self.current_i][self.current_j-1];
+                if (movs==self.DOWN):
+                    if(self.current_i < self.ROWS - 1):
+                        if(self.map[self.current_i+1][self.current_j]<lower_visited):
+                            lower_visited=self.map[self.current_i+1][self.current_j];
+                if (movs==self.RIGHT):
+                    if(self.current_j < self.COLS - 1):
+                        if(self.map[self.current_i][self.current_j+1]<lower_visited):
+                            lower_visited=self.map[self.current_i][self.current_j+1];
+
+            #append to a list the movement on slots with same visit count (lowest)
+            directions = [];
+
+            for movs in range (0,self.MOVES):
+                if (movs==self.UP):
+                    if(self.current_i > 0):
+                        if(self.map[self.current_i-1][self.current_j]==lower_visited):
+                            directions.append(movs);
+                if (movs==self.LEFT):
+                    if(self.current_j > 0):
+                        if(self.map[self.current_i][self.current_j-1]==lower_visited):
+                            directions.append(movs);
+                if (movs==self.DOWN):
+                    if(self.current_i < self.ROWS - 1):
+                        if(self.map[self.current_i+1][self.current_j]==lower_visited):
+                            directions.append(movs);
+                if (movs==self.RIGHT):
+                    if(self.current_j < self.COLS - 1):
+                        if(self.map[self.current_i][self.current_j+1]==lower_visited):
+                            directions.append(movs);
+
+            #generate the direction to be taken based on random suggested move
+            movement = directions[randint (0,len(directions)-1)]
+
+            #bot moves marking the new slot and considering constraints
+            if (movement==self.UP):
+                if(self.current_i > 0):
+                    self.current_i-=1;
+            if (movement==self.LEFT):
+                if(self.current_j > 0):
+                    self.current_j-=1;
+            if (movement==self.DOWN):
+                if(self.current_i < self.ROWS - 1):
+                    self.current_i+=1;
+            if (movement==self.RIGHT):
+                if(self.current_j < self.COLS - 1):
+                    self.current_j+=1;
+
     def draw(self):
         self.screen.fill(self.BACKGROUND)
         slot_width = ((self.WIDTH-self.MAP_BORDER)//self.COLS)
@@ -107,6 +186,9 @@ class Game(object):
 
                 if (i==self.initial_i and j==self.initial_j):
                     pygame.draw.rect(self.screen, self.FORESTGREEN, rect)
+
+                if (i==self.current_i and j==self.current_j):
+                    pygame.draw.rect(self.screen, self.GOLD, rect)
 
                 pygame.draw.rect(self.screen, self.BLACK, rect, 1)
 
