@@ -4,6 +4,9 @@ from pygame.locals import *
 from random import randint
 import sys
 
+#get linear position from a node over the map
+def get_line_position(r, c):
+    return (Game.COLS*r)+c
 
 class Game(object):
 
@@ -16,7 +19,7 @@ class Game(object):
 
     #Window Properties
     RESOLUTION = WIDTH + 100,HEIGHT
-    WINDOWS_TITLE = 'Ostaciobot v0.2'
+    WINDOWS_TITLE = 'Ostaciobot v0.6'
 
     #Colors
     WHITE = (255, 255, 255)
@@ -38,9 +41,9 @@ class Game(object):
     TRACE_MARK	= 6;
 
     #Map dimentions and values
-    COLS = 20;
-    ROWS = 20;
-    WALLS = 100;
+    COLS = 5;
+    ROWS = 5;
+    WALLS = 2;
 
     #Slot values
     CLEAR = 0;
@@ -58,7 +61,6 @@ class Game(object):
     DOWN = 2;
     RIGHT = 3;
 
-
     def __init__(self):
         os.environ['SDL_VIDEO_CENTERED'] = '1'
         pygame.display.set_caption(self.WINDOWS_TITLE)
@@ -70,13 +72,17 @@ class Game(object):
         self.screen = pygame.display.set_mode(self.RESOLUTION)
         self.clock = pygame.time.Clock()
         self.map = [[0 for x in range(self.COLS)] for y in range(self.ROWS)]
-        self.found = False
+        self.adjacency_matrix = [[0 for x in range(self.MOVES)] for y in range(self.ROWS*self.COLS)]
         self.init()
 
     def init(self):
         self.done = False
         self.found = False
         self.win = False
+
+        for i in range (0,(self.ROWS*self.COLS)):
+            for j in range (0,self.MOVES):
+                self.adjacency_matrix[i][j]=0
 
         for i in range(0,self.ROWS):
             for j in range(0,self.COLS):
@@ -130,6 +136,7 @@ class Game(object):
                 self.map[self.current_i][self.current_j]+=1;
             else:
                 self.found=True
+                print (self.adjacency_matrix)
                 return
 
             #locate slot with the lower visit count
@@ -180,15 +187,23 @@ class Game(object):
             #bot moves marking the new slot and considering constraints
             if (movement==self.UP):
                 if(self.current_i > 0):
+                    self.adjacency_matrix[get_line_position(self.current_i,self.current_j)][self.UP]=1;
+                    self.adjacency_matrix[get_line_position(self.current_i-1,self.current_j)][self.DOWN]=1;
                     self.current_i-=1;
             if (movement==self.LEFT):
                 if(self.current_j > 0):
+                    self.adjacency_matrix[get_line_position(self.current_i,self.current_j)][self.LEFT]=1;
+                    self.adjacency_matrix[get_line_position(self.current_i,self.current_j-1)][self.RIGHT]=1;
                     self.current_j-=1;
             if (movement==self.DOWN):
                 if(self.current_i < self.ROWS - 1):
+                    self.adjacency_matrix[get_line_position(self.current_i,self.current_j)][self.DOWN]=1;
+                    self.adjacency_matrix[get_line_position(self.current_i+1,self.current_j)][self.UP]=1;
                     self.current_i+=1;
             if (movement==self.RIGHT):
                 if(self.current_j < self.COLS - 1):
+                    self.adjacency_matrix[get_line_position(self.current_i,self.current_j)][self.RIGHT]=1;
+                    self.adjacency_matrix[get_line_position(self.current_i,self.current_j+1)][self.LEFT]=1;
                     self.current_j+=1;
 
             self.battery -= 1;
