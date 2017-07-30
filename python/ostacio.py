@@ -27,6 +27,13 @@ class Game(object):
     GOLD = (255, 215, 0)
     DARKSLATEBLUE = (72, 61, 139)
     PALEGOLDENROAD = (238, 232, 170)
+    DARKBLUE = (0, 0, 139)
+    LIGHTSLATEGRAY = (119, 136, 153)
+    LIGHTYELLOW = (255,255,116)
+    TOMATO = (255, 99, 71)
+    ORANGE = (255, 165, 0)
+    LIME = (50, 205, 50)
+
     BACKGROUND = WHITE
     TRACE_MARK	= 6;
 
@@ -257,6 +264,30 @@ class Game(object):
             surface_done = self.font.render('WIN', False, self.DARKSLATEBLUE)
             rect = surface_done.get_rect( center = (self.WIDTH+50 , self.HEIGHT-105 ))
             self.screen.blit(surface_done, rect)
+
+        #Draw battery icon
+        terminal = pygame.Rect((self.WIDTH+48,4),(12,6))
+        jacket = pygame.Rect((self.WIDTH+44,10),(20,40))
+        pygame.draw.rect(self.screen, self.LIGHTSLATEGRAY, terminal)
+        pygame.draw.rect(self.screen, self.DARKBLUE, jacket)
+        pygame.draw.line(self.screen, self.LIGHTYELLOW,(self.WIDTH+50,19),(self.WIDTH+57,19),2)
+        pygame.draw.line(self.screen, self.LIGHTYELLOW,(self.WIDTH+53,16),(self.WIDTH+53,23),2)
+        pygame.draw.line(self.screen, self.LIGHTYELLOW,(self.WIDTH+50,39),(self.WIDTH+57,39),2)
+
+        #Draw battery indicator
+        delta_bat = (self.HEIGHT-185) / self.BATTERY_STEPS
+
+        if(self.battery > 0):
+            indicator = pygame.Rect((self.WIDTH+40,((self.BATTERY_STEPS-self.battery)*delta_bat)+55),(30,self.battery*delta_bat))
+            if(self.battery <= self.BATTERY_STEPS//5):
+                pygame.draw.rect(self.screen, self.TOMATO, indicator)
+            elif (self.battery <= self.BATTERY_STEPS//2):
+                pygame.draw.rect(self.screen, self.ORANGE, indicator)
+            else:
+                pygame.draw.rect(self.screen, self.LIME, indicator)
+
+        bar = pygame.Rect((self.WIDTH+40,55),(30,self.BATTERY_STEPS*delta_bat))
+        pygame.draw.rect(self.screen, self.BLACK, bar, 1)
 
         pygame.display.flip()
 
