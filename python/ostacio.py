@@ -17,8 +17,8 @@ def get_column(lp):
 
 class Game(object):
 
-    #Animation properties
-    FRAMES_PER_SECOND = 30
+    #Animation properties before 30 after 60
+    FRAMES_PER_SECOND = 60
 
     #Canvas/Map Properties
     WIDTH, HEIGHT = 700, 700
@@ -30,7 +30,8 @@ class Game(object):
 
     #Colors
     WHITE = (255, 255, 255)
-    BLACK = (0, 0, 0)
+    #Color before black after purple
+    BLACK = (128, 0, 128)
     FIREBRICK = (170, 13, 3)
     STEELBLUE = (70,130,180)
     FORESTGREEN = (34, 139, 34)
