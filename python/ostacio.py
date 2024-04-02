@@ -30,7 +30,8 @@ class Game(object):
 
     #Colors
     WHITE = (255, 255, 255)
-    BLACK = (0, 0, 0)
+    #Color before black after purple
+    BLACK = (128, 0, 128)
     FIREBRICK = (170, 13, 3)
     STEELBLUE = (70,130,180)
     FORESTGREEN = (34, 139, 34)
