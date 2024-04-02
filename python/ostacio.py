@@ -17,11 +17,11 @@ def get_column(lp):
 
 class Game(object):
 
-    #Animation properties before 30 after 60 after 50
-    FRAMES_PER_SECOND = 50
+    #Animation properties
+    FRAMES_PER_SECOND = 60
 
     #Canvas/Map Properties
-    WIDTH, HEIGHT = 700, 700
+    WIDTH, HEIGHT = 1000, 750
     MAP_BORDER = 10
 
     #Window Properties
